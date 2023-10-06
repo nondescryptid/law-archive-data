@@ -18,7 +18,7 @@ URL = "https://www.stratatb.gov.sg/news-and-judgments/judgments/"
 def get_and_parse_html(url): 
     html_text = requests.get(url).text
     parsed_html = BeautifulSoup(html_text, 'html.parser')
-    return 
+    return parsed_html
 
 def extract_all_pages(url):
     """
