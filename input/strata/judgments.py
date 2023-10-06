@@ -4,19 +4,21 @@ from pypdf import PdfReader
 import io
 import json 
 """
-Schema: 
+JSON structure: 
 title: 
-date: "03 JAN 2023" 
+date: 
 pdf-url:
 pdf-content: 
 """
 BASE_URL = "https://www.stratatb.gov.sg"
 URL = "https://www.stratatb.gov.sg/news-and-judgments/judgments/"
 
-judgment_arr = []
-# Get URL contents \
-def get_data(url): 
-    return requests.get(url).text
+# Get URL contents 
+
+def get_and_parse_html(url): 
+    html_text = requests.get(url).text
+    parsed_html = BeautifulSoup(html_text, 'html.parser')
+    return 
 
 def extract_all_pages(url):
     """
@@ -33,25 +35,28 @@ def extract_all_pages(url):
     # Joining at the end is preferred over repeatedly concatenating strings
     return ''.join(pdf_text)
 
-# def parse_judgments()
-html_text = get_data(URL)
-soup = BeautifulSoup(html_text, 'html.parser')
-judgments = soup.find_all("div", class_="resource-card-element")
+def main(): 
+    parsed_html = get_and_parse_html(URL)
+    judgments = parsed_html.find_all("div", class_="resource-card-element")
+    judgment_arr = []
+    for judgment in judgments: 
+        judgment_dict = {}
+        title = judgment.select("h5")[0].get_text().replace('â\x80\x93', '-').strip("...")
+        # Concatenation with base URL is needed because the site uses relative links
+        judgment_dict["title"] = title
+        pdf_url = BASE_URL + judgment.find("a", href=True)["href"]
+        judgment_dict["pdf-url"] = pdf_url
+        date = judgment.find("small", class_="is-inline").get_text()
+        # Get judgment PDF 
+        judgment_dict["date"] = date
+        try: 
+            pdf_content = extract_all_pages(pdf_url)
+        except: 
+            pdf_content = "Could not extract PDF"
+        judgment_dict["pdf-content"] = pdf_content
+        judgment_arr.append(judgment_dict)
 
-for judgment in judgments: 
-    judgment_dict = {}
-    title = judgment.select("h5")[0].get_text().replace('â\x80\x93', '-').strip("...")
-    # Concatenation with base URL is needed because the site uses relative links
-    judgment_dict["title"] = title
-    pdf_url = BASE_URL + judgment.find("a", href=True)["href"]
-    judgment_dict["pdf-url"] = pdf_url
-    date = judgment.find("small", class_="is-inline").get_text()
-    # Get judgment PDF 
-    judgment_dict["date"] = date
-    try: 
-        pdf_content = extract_all_pages(pdf_url)
-    except: 
-        pdf_content = "Could not extract PDF"
-    judgment_dict["pdf-content"] = pdf_content
-    judgment_arr.append(judgment_dict)
+    json_path = "data/strata-title-board-judgments.json"
 
+    with open(json_path, "w") as file: 
+        json.dump(judgment_arr, file)
